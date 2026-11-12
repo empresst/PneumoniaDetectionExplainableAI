@@ -60,7 +60,7 @@ No dataset is redistributed in this repository.
 
 ## 4. Results
 
-> 🔜 **Pending:** run [`notebooks/colab_pipeline.ipynb`](notebooks/colab_pipeline.ipynb) on a GPU. `python -m pneumo.summarize` then writes the full table to `results/RESULTS.md`, and the key rows are copied here.
+> 🔜 **Pending:** run [`notebooks/kaggle_pipeline.ipynb`](notebooks/kaggle_pipeline.ipynb) on a GPU. `python -m pneumo.summarize` then writes the full table to `results/RESULTS.md`, and the key rows are copied here.
 
 | Model | Internal test AUROC [95% CI] | RSNA AUROC (opacity vs normal) | RSNA AUROC (vs all) | Sens / Spec @ Youden (internal) |
 |---|---|---|---|---|
@@ -88,7 +88,7 @@ bash scripts/run_all.sh     # train + evaluate + explain every config, then summ
 python app.py --checkpoint runs/densenet121_224/best.pt   # demo (pip install gradio)
 ```
 
-On Colab, use [`notebooks/colab_pipeline.ipynb`](notebooks/colab_pipeline.ipynb), which downloads the data and saves runs to Google Drive.
+On Kaggle, use [`notebooks/kaggle_pipeline.ipynb`](notebooks/kaggle_pipeline.ipynb) (datasets attached as notebook inputs, no API key needed). On Colab, use [`notebooks/colab_pipeline.ipynb`](notebooks/colab_pipeline.ipynb), which downloads the data and saves runs to Google Drive.
 To test the whole pipeline on synthetic data on CPU (about 30 s): `pip install -r requirements-dev.txt && pytest`.
 
 ```
