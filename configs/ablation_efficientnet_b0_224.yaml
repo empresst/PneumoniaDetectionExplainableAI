@@ -1,0 +1,4 @@
+base: default.yaml
+run_name: efficientnet_b0_224
+model:
+  name: efficientnet_b0

@@ -1,0 +1,15 @@
+# Tiny CPU run used by the tests / to check the pipeline end to end. Not a real experiment.
+base: default.yaml
+run_name: smoke
+data:
+  img_size: 64
+  num_workers: 0
+model:
+  name: resnet18
+  pretrained: false
+train:
+  epochs: 2
+  batch_size: 8
+  amp: false
+eval:
+  bootstrap: 50

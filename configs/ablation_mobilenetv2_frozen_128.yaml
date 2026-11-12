@@ -1,0 +1,11 @@
+# Reproduces the v1 setup (frozen ImageNet MobileNetV2 at 128 px) on the corrected,
+# patient-level split - the baseline every other run is compared against.
+base: default.yaml
+run_name: mobilenetv2_frozen_128
+data:
+  img_size: 128
+model:
+  name: mobilenetv2_100
+  freeze_backbone: true
+train:
+  lr: 1.0e-3

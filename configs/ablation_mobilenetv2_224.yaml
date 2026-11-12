@@ -1,0 +1,5 @@
+# Same backbone as v1, but fully fine-tuned at 224 px: isolates the effect of fine-tuning + resolution.
+base: default.yaml
+run_name: mobilenetv2_224
+model:
+  name: mobilenetv2_100

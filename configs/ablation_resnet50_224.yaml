@@ -1,0 +1,4 @@
+base: default.yaml
+run_name: resnet50_224
+model:
+  name: resnet50

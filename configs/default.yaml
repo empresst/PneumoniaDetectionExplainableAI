@@ -1,0 +1,39 @@
+# Main experiment: DenseNet-121 (CheXNet backbone), full fine-tuning, 224 px.
+# Every other config in this folder inherits from this file and overrides a few keys.
+
+seed: 42
+run_name: densenet121_224
+
+data:
+  manifest: data/manifest.csv      # written by `python -m pneumo.prepare`
+  img_size: 224
+  num_workers: 2
+  # Patient-level split of the pediatric dataset (official train+val+test are pooled
+  # first, because the official split does not guarantee patient separation).
+  test_frac: 0.15
+  val_frac: 0.15
+
+model:
+  name: densenet121                # any timm model name
+  pretrained: true
+  drop_rate: 0.2
+  freeze_backbone: false           # true = only train the classifier head (v1 behaviour)
+
+train:
+  epochs: 15
+  batch_size: 32
+  lr: 1.0e-4
+  weight_decay: 1.0e-2
+  warmup_epochs: 1
+  patience: 4                      # early stopping on validation AUROC
+  amp: true
+  pos_weight: auto                 # auto = n_negative / n_positive (handles class imbalance)
+
+eval:
+  bootstrap: 2000                  # resamples for 95% confidence intervals
+  high_sens_target: 0.95           # second operating point: sensitivity >= 95% on validation
+  external_subsets:                # RSNA evaluation variants
+    - rsna_opacity_vs_normal       # same task as training: Lung Opacity vs Normal
+    - rsna_opacity_vs_all          # harder: Normal + "Not Normal / No Opacity" as negatives
+
+output_dir: runs
