@@ -60,15 +60,15 @@ No dataset is redistributed in this repository.
 
 ## 4. Results
 
-> 🔜 **Pending:** run [`notebooks/kaggle_pipeline.ipynb`](notebooks/kaggle_pipeline.ipynb) on a GPU. `python -m pneumo.summarize` then writes the full table to `results/RESULTS.md`, and the key rows are copied here.
+Single run per configuration (seed 42) on a Kaggle T4 GPU; 95% CIs from patient-level bootstrap. Full table with AUPRC, calibration and explainability scores: [`results/RESULTS.md`](results/RESULTS.md).
 
 | Model | Internal test AUROC [95% CI] | RSNA AUROC (opacity vs normal) | RSNA AUROC (vs all) | Sens / Spec @ Youden (internal) |
 |---|---|---|---|---|
-| v1 setup: MobileNetV2 frozen, 128 px | – | – | – | – |
-| MobileNetV2 fine-tuned, 224 px | – | – | – | – |
-| EfficientNet-B0, 224 px | – | – | – | – |
-| ResNet-50, 224 px | – | – | – | – |
-| **DenseNet-121, 224 px (main)** | – | – | – | – |
+| v1 setup: MobileNetV2 frozen, 128 px | 0.977 [0.968–0.986] | 0.716 [0.699–0.733] | 0.633 [0.618–0.650] | 0.904 / 0.927 |
+| MobileNetV2 fine-tuned, 224 px | 0.995 [0.991–0.998] | 0.904 [0.894–0.914] | 0.774 [0.762–0.788] | 0.959 / 0.978 |
+| EfficientNet-B0, 224 px | 0.997 [0.994–0.999] | 0.917 [0.907–0.926] | 0.779 [0.766–0.791] | 0.983 / 0.970 |
+| ResNet-50, 224 px | 0.995 [0.988–0.999] | 0.929 [0.920–0.937] | 0.784 [0.771–0.796] | 0.950 / 0.996 |
+| **DenseNet-121, 224 px (main)** | 0.995 [0.991–0.998] | **0.940 [0.932–0.948]** | **0.796 [0.783–0.809]** | 0.956 / 0.961 |
 
 Figures produced per run in `runs/<run>/eval/<test set>/`: ROC, PR, reliability diagram, confusion matrix, Grad-CAM gallery, and for RSNA a subgroup table.
 
