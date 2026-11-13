@@ -39,7 +39,8 @@ def test_full_pipeline(pediatric_root, rsna_root, tmp_path):
 
     results = explain(run_dir, max_images=40)
     assert (run_dir / "eval" / "test" / "gradcam_gallery.png").exists()
-    assert -1 <= results["test"]["randomization_sanity_check"]["spearman_mean"] <= 1
+    sanity = results["test"]["randomization_sanity_check"]
+    assert sanity["n_valid"] + max(sanity["n_blank_trained"], sanity["n_blank_random"]) >= 1
 
     table = summarize(tmp_path / "runs", tmp_path / "results")
     assert "smoke" in table and json.loads((tmp_path / "results" / "results.json").read_text())

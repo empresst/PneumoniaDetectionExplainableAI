@@ -73,7 +73,7 @@ def subgroup_table(df: pd.DataFrame, threshold: float) -> pd.DataFrame:
             rows.append({"attribute": col, "group": value, "n": len(g), "prevalence": g.label.mean(),
                          "auroc": roc_auc_score(g.label, g.prob),
                          "sensitivity": m["sensitivity"], "specificity": m["specificity"]})
-    return pd.DataFrame(rows)
+    return pd.DataFrame(rows, columns=["attribute", "group", "n", "prevalence", "auroc", "sensitivity", "specificity"])
 
 
 def evaluate(run_dir: Path, subsets: list[str] | None = None, batch_size: int = 64) -> dict:

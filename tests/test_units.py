@@ -86,3 +86,28 @@ def test_dicom_keeps_raw_8bit_intensities(rsna_root):
     path = next((rsna_root / "stage_2_train_images").glob("*.dcm"))
     raw = pydicom.dcmread(path).pixel_array
     assert np.array_equal(np.asarray(load_grayscale(str(path))), raw)
+
+
+def test_sanity_check_counts_blank_maps_instead_of_passing():
+    """Regression: blank random-weight maps gave NaN correlations that were silently turned into 0."""
+    from torch import nn
+
+    from pneumo.gradcam import randomization_sanity_check
+
+    class Dead(nn.Module):  # feature map is all zeros -> blank Grad-CAM for every image
+        def __init__(self):
+            super().__init__()
+            self.conv = nn.Conv2d(3, 2, 8, stride=8)
+
+        def forward_features(self, x):
+            return self.conv(x) * 0
+
+        def forward_head(self, f):
+            return f.flatten(1).sum(1, keepdim=True)
+
+        def forward(self, x):
+            return self.forward_head(self.forward_features(x))
+
+    out = randomization_sanity_check(Dead(), torch.randn(5, 3, 32, 32), batch_size=2)
+    assert out["n_valid"] == 0 and out["n_blank_trained"] == 5
+    assert np.isnan(out["spearman_mean"])  # not 0.0

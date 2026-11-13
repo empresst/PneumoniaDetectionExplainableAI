@@ -53,9 +53,31 @@ def randomize_weights(model: nn.Module, seed: int = 0) -> nn.Module:
     return rand.eval()
 
 
-def randomization_sanity_check(model: nn.Module, x: torch.Tensor) -> dict[str, float]:
-    trained, _ = gradcam(model, x)
-    random, _ = gradcam(randomize_weights(model), x)
-    rhos = [spearmanr(a.flatten().cpu(), b.flatten().cpu()).statistic for a, b in zip(trained, random)]
-    rhos = np.nan_to_num(np.asarray(rhos, dtype=float))
-    return {"spearman_mean": float(rhos.mean()), "spearman_std": float(rhos.std()), "n": len(rhos)}
+def randomization_sanity_check(model: nn.Module, x: torch.Tensor, batch_size: int = 32) -> dict[str, float]:
+    """Spearman rho between trained and random-weight Grad-CAM maps.
+
+    A map that is constant (all zeros - common for random weights, where ReLU removes every
+    negative contribution) has no defined correlation. Those cases are counted separately
+    instead of being treated as rho = 0, which would look like a pass.
+    """
+    random_model = randomize_weights(model)
+    rhos, n_blank_trained, n_blank_random = [], 0, 0
+    for i in range(0, len(x), batch_size):
+        trained, _ = gradcam(model, x[i:i + batch_size])
+        random, _ = gradcam(random_model, x[i:i + batch_size])
+        for a, b in zip(trained, random):
+            a, b = a.flatten().cpu().numpy(), b.flatten().cpu().numpy()
+            blank_a, blank_b = np.ptp(a) == 0, np.ptp(b) == 0
+            n_blank_trained += int(blank_a)
+            n_blank_random += int(blank_b)
+            if not (blank_a or blank_b):
+                rhos.append(spearmanr(a, b).statistic)
+    rhos = np.asarray(rhos, dtype=float)
+    return {
+        "spearman_mean": float(rhos.mean()) if len(rhos) else float("nan"),
+        "spearman_std": float(rhos.std()) if len(rhos) else float("nan"),
+        "n_valid": int(len(rhos)),
+        "n_blank_trained": n_blank_trained,
+        "n_blank_random": n_blank_random,
+        "n": int(len(x)),
+    }

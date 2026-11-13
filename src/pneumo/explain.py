@@ -63,7 +63,7 @@ def gallery(model, df: pd.DataFrame, img_size: int, device: str, title: str, out
     plt.close(fig)
 
 
-def explain(run_dir: Path, max_images: int = 400, batch_size: int = 32) -> dict:
+def explain(run_dir: Path, max_images: int = 400, batch_size: int = 32, n_sanity: int = 128) -> dict:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model, ckpt = load_checkpoint(run_dir / "best.pt", device)
     img_size, threshold = ckpt["config"]["data"]["img_size"], ckpt["thresholds"]["youden"]
@@ -80,7 +80,7 @@ def explain(run_dir: Path, max_images: int = 400, batch_size: int = 32) -> dict:
             energies.append(border_energy(cams))
         sample["border_energy"] = np.concatenate(energies)
 
-        sanity = randomization_sanity_check(model, _batch(sample.head(32), img_size).to(device))
+        sanity = randomization_sanity_check(model, _batch(sample.head(n_sanity), img_size).to(device), batch_size)
         res = {
             "randomization_sanity_check": sanity,
             "border_energy_mean": float(sample.border_energy.mean()),
@@ -89,7 +89,8 @@ def explain(run_dir: Path, max_images: int = 400, batch_size: int = 32) -> dict:
         }
         (pred_csv.parent / "explain.json").write_text(json.dumps(res, indent=2))
         gallery(model, df, img_size, device, f"Grad-CAM - {name}", pred_csv.parent / "gradcam_gallery.png")
-        print(f"{name:26s} sanity rho={sanity['spearman_mean']:.2f}  border energy={res['border_energy_mean']:.3f}")
+        print(f"{name:26s} sanity rho={sanity['spearman_mean']:.2f} (valid {sanity['n_valid']}/{sanity['n']}, "
+              f"blank random maps {sanity['n_blank_random']})  border energy={res['border_energy_mean']:.3f}")
         results[name] = res
     return results
 
