@@ -6,7 +6,7 @@ A chest X-ray pneumonia classifier built to answer a harder question than *"what
 - **Leakage-free evaluation:** patient-level, stratified train/val/test split.
 - **External validation:** trained on pediatric X-rays from one hospital in China, tested on adult X-rays from the US (RSNA).
 - **Clinically meaningful metrics:** AUROC and AUPRC with patient-level bootstrap 95% CIs, sensitivity and specificity at operating points frozen on validation, calibration (ECE) before and after temperature scaling, and subgroup analysis by sex, age and view.
-- **Explanations that are checked:** Grad-CAM plus a weight-randomization sanity check and a quantitative shortcut-learning probe.
+- **Explanations that are tested, not just shown:** Grad-CAM plus a weight-randomization sanity check and a border-attention (shortcut) probe — which flagged a problem with the best-performing model (see §4).
 - **Engineering:** controlled ablations, a reproducible config-driven pipeline, tests, and a Gradio demo.
 
 > ⚠️ Research prototype. Not a medical device and not for clinical use.
@@ -60,26 +60,47 @@ No dataset is redistributed in this repository.
 
 ## 4. Results
 
-Single run per configuration (seed 42) on a Kaggle T4 GPU; 95% CIs from patient-level bootstrap. Full table with AUPRC, calibration and explainability scores: [`results/RESULTS.md`](results/RESULTS.md).
+Single training run per configuration (seed 42) on a Kaggle T4 GPU; 95% CIs from patient-level bootstrap over the test images (they do **not** include training randomness). A second run reproduced every metric exactly. Full tables — AUPRC, calibration, explainability scores, subgroups: [`results/RESULTS.md`](results/RESULTS.md).
 
-| Model | Internal test AUROC [95% CI] | RSNA AUROC (opacity vs normal) | RSNA AUROC (vs all) | Sens / Spec @ Youden (internal) |
+| Model | **External** RSNA AUROC: opacity vs normal | **External** RSNA AUROC: opacity vs all | Internal test AUROC | Internal Sens / Spec @ Youden |
 |---|---|---|---|---|
-| v1 setup: MobileNetV2 frozen, 128 px | 0.977 [0.968–0.986] | 0.716 [0.699–0.733] | 0.633 [0.618–0.650] | 0.904 / 0.927 |
-| MobileNetV2 fine-tuned, 224 px | 0.995 [0.991–0.998] | 0.904 [0.894–0.914] | 0.774 [0.762–0.788] | 0.959 / 0.978 |
-| EfficientNet-B0, 224 px | 0.997 [0.994–0.999] | 0.917 [0.907–0.926] | 0.779 [0.766–0.791] | 0.983 / 0.970 |
-| ResNet-50, 224 px | 0.995 [0.988–0.999] | 0.929 [0.920–0.937] | 0.784 [0.771–0.796] | 0.950 / 0.996 |
-| **DenseNet-121, 224 px (main)** | 0.995 [0.991–0.998] | **0.940 [0.932–0.948]** | **0.796 [0.783–0.809]** | 0.956 / 0.961 |
+| v1 setup: MobileNetV2 frozen, 128 px | 0.716 [0.699–0.733] | 0.633 [0.618–0.650] | 0.977 [0.968–0.986] | 0.904 / 0.927 |
+| MobileNetV2 fine-tuned, 224 px | 0.904 [0.894–0.914] | 0.774 [0.762–0.788] | 0.995 [0.991–0.998] | 0.959 / 0.978 |
+| EfficientNet-B0, 224 px | 0.917 [0.907–0.926] | 0.779 [0.766–0.791] | 0.997 [0.994–0.999] | 0.983 / 0.970 |
+| ResNet-50, 224 px | 0.929 [0.920–0.937] | 0.784 [0.771–0.796] | 0.995 [0.988–0.999] | 0.950 / 0.996 |
+| DenseNet-121, 224 px | 0.940 [0.932–0.948] | 0.796 [0.783–0.809] | 0.995 [0.991–0.998] | 0.956 / 0.961 |
 
-Figures produced per run in `runs/<run>/eval/<test set>/`: ROC, PR, reliability diagram, confusion matrix, Grad-CAM gallery, and for RSNA a subgroup table.
+### Findings
+
+1. **The internal test set is saturated; the external one is informative.** Every fine-tuned model scores ≈ 0.995 internally, so the pediatric test cannot separate them. The Kermany dataset is known to be unusually easy and shortcut-prone, so the internal number is not the headline.
+2. **Fixing v1's setup matters most.** Fine-tuning at 224 px instead of a frozen backbone at 128 px raises external AUROC (opacity vs normal) from 0.72 to 0.90 with the same MobileNetV2 backbone.
+3. **No architecture is shown to be best.** DenseNet-121 has the highest external AUROC, but each model was trained once and the DenseNet and ResNet-50 intervals overlap; differences of ~0.01 can be within seed-to-seed variation.
+4. **The model detects "abnormal", not specifically "pneumonia".** External AUROC drops from 0.94 (opacity vs normal) to 0.80 when RSNA images with *other* abnormalities are counted as negatives (DenseNet-121). Sensitivity stays ≈ 0.90, but specificity falls from 0.96 (internal) to 0.86 (vs normal) and 0.55 (vs all).
+5. **Calibration does not transfer.** Temperature scaling fitted on pediatric validation data gives ECE 0.016 internally but 0.14 (vs normal) and 0.42 (vs all) on RSNA, essentially unchanged by calibration. Part of this is prevalence shift (73% pneumonia in training vs 22.5% in the RSNA "vs all" set), which temperature scaling cannot correct.
+6. **Projection (AP vs PA) is a confounder.** In RSNA, 74% of AP images but only 17% of PA images are positive. Within a single view, DenseNet's AUROC is 0.88–0.90, below the pooled 0.94, so part of the pooled score comes from telling the two views apart. At the frozen threshold, specificity is 0.45 on AP images and sensitivity 0.67 on PA images. Results by sex and age band are flat (AUROC within ~0.02 for DenseNet).
+7. **The best-performing model looks at the image borders.** DenseNet-121's Grad-CAM puts 0.67–0.74 of its mass in the outer 15% band, above the 0.51 of a uniform map — a typical sign of shortcut features (borders, text markers, or the black padding added when images are made square). On the external set ResNet-50 scores 0.30–0.34 (0.61 internally) with a slightly lower external AUROC, so better external AUROC did not coincide with more plausible attention. The randomization sanity check passes for DenseNet (ρ ≈ 0, 128/128 valid comparisons); for ResNet-50 many random-weight maps were blank (44–72 of 128 valid), so its check is less conclusive.
+
+Figures per run in `runs/<run>/eval/<test set>/` (Kaggle output): ROC, PR, reliability diagram, confusion matrix, Grad-CAM gallery, subgroup table.
 
 ## 5. Limitations
 
 - **Population shift by design.** The training data are pediatric and come from a single centre. Adults look different (heart size, bone density, devices), so a performance drop on RSNA is expected. The point is to **measure** it, not hide it.
 - **Label differences.** Kermany labels are image-level diagnoses. RSNA "Lung Opacity" labels are radiologist-drawn opacities, which are related to pneumonia but not identical.
-- **Grad-CAM is coarse** (7×7 feature map at 224 px for DenseNet-121) and shows correlation, not causation. The sanity check and border score limit, but do not remove, that caveat.
+- **Grad-CAM is coarse** (7×7 feature map at 224 px; 4×4 for the 128-px baseline) and shows correlation, not causation. The border score is a crude proxy; it does not measure overlap with the actual opacity.
+- **Single training seed.** Confidence intervals cover test-set sampling only, not training randomness, so architecture rankings are not established.
+- **Patient grouping is incomplete.** Normal and pneumonia images use different file-naming schemes, so a child imaged in both classes cannot be linked and could fall into different splits.
+- **Sanity check is partial.** Only full-model weight randomization is tested (not cascading, layer-by-layer randomization), on 128 images per test set.
 - **No prospective or clinical evaluation**, and no assessment of radiologist + model performance together.
 
-## 6. Reproduce
+## 6. Future work
+
+- **Lung cropping / masking** (e.g. with a pretrained lung segmentation model) and retraining, to test whether the border attention in finding 7 is a shortcut: compare border attention and external AUROC before vs after.
+- **Localization against radiologist boxes:** RSNA provides opacity bounding boxes; measure the share of Grad-CAM mass inside them (cf. Saporta et al., 2022).
+- **3–5 training seeds per model** and a paired comparison on the same test images (DeLong or paired bootstrap) before claiming one architecture is better.
+- **Prevalence (label-shift) correction** of predicted probabilities for the target population, to separate prevalence shift from genuine miscalibration.
+- **View-stratified analysis and training** to reduce reliance on AP/PA differences.
+
+## 7. Reproduce
 
 ```bash
 pip install -e .            # Python ≥ 3.10
@@ -115,5 +136,6 @@ tests/          unit tests + end-to-end pipeline test on synthetic data
 - Selvaraju R. et al. *Grad-CAM: Visual Explanations from Deep Networks via Gradient-based Localization.* ICCV, 2017.
 - Adebayo J. et al. *Sanity Checks for Saliency Maps.* NeurIPS, 2018.
 - Guo C. et al. *On Calibration of Modern Neural Networks.* ICML, 2017.
+- Saporta A. et al. *Benchmarking saliency methods for chest X-ray interpretation.* Nature Machine Intelligence, 2022.
 - Zech J. et al. *Variable generalization performance of a deep learning model to detect pneumonia in chest radiographs.* PLOS Medicine, 2018.
 - DeGrave A. et al. *AI for radiographic COVID-19 detection selects shortcuts over signal.* Nature Machine Intelligence, 2021.
