@@ -1,6 +1,6 @@
 # Results
 
-Kaggle runs: GPU T4, ~30 min for all five models (run 2 reproduced run 1's metrics exactly and added sanity-check validity counts and subgroups). Internal test: 886 images / 444 patients (pediatric). External: 6,000 RSNA studies (3,342 Lung Opacity + Normal).
+Kaggle runs: GPU T4, ~30 min for all five models (run 2 gave identical training losses and performance metrics to run 1; the sanity check was revised in between, adding validity counts, and subgroups were added). Internal test: 886 images / 444 patients (pediatric). External: 6,000 RSNA studies (3,342 Lung Opacity + Normal).
 
 | Run | Test set | n | AUROC [95% CI] | AUPRC [95% CI] | Sensitivity* | Specificity* | ECE before → after calibration | Border attention† | Sanity ρ‡ |
 |---|---|---|---|---|---|---|---|---|---|
@@ -21,7 +21,7 @@ Kaggle runs: GPU T4, ~30 min for all five models (run 2 reproduced run 1's metri
 | resnet50_224 | test | 886 | 0.995 [0.988–0.999] | 0.997 [0.993–1.000] | 0.950 [0.932–0.966] | 0.996 [0.987–1.000] | 0.019 → 0.014 | 0.61 | 0.10 (44/128 valid) |
 
 \* At the Youden-optimal threshold chosen on the validation set and frozen for all test sets.  
-† Share of Grad-CAM mass in the outer 15% border band (a uniform map scores 0.51; lower = attention on the lung fields).  
+† Share of Grad-CAM mass in the outer 15% border band (a uniform map scores ≈ 0.50 at 224 px; lower = attention on the lung fields).  
 ‡ Spearman correlation between Grad-CAM maps of the trained model and of the same network with random weights (Adebayo et al., 2018); close to 0 = maps depend on what was learned. Images where either map is blank have no defined correlation and are excluded; the count of valid comparisons is shown in brackets.
 
 ## Subgroups — RSNA, rsna_opacity_vs_normal

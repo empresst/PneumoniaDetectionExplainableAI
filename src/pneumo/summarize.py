@@ -65,7 +65,7 @@ def summarize(runs: Path, out: Path) -> str:
     )
     notes = (
         "\n\n\\* At the Youden-optimal threshold chosen on the validation set and frozen for all test sets.  \n"
-        "† Share of Grad-CAM mass in the outer 15% border band (a uniform map scores 0.51; "
+        "† Share of Grad-CAM mass in the outer 15% border band (a uniform map scores ≈ 0.50 at 224 px; "
         "lower = attention on the lung fields).  \n"
         "‡ Spearman correlation between Grad-CAM maps of the trained model and of the same "
         "network with random weights (Adebayo et al., 2018); close to 0 = maps depend on what was learned. "
